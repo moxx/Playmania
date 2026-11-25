@@ -299,7 +299,6 @@ export function makeRacerTextures(scene: Phaser.Scene): void {
     ctx.translate(35, 16);
     drawRocket(ctx);
   });
-  // Halterung Rakete
   canvasTex(scene, 'coin', 40, 40, (ctx) => {
     ctx.translate(20, 20);
     ctx.fillStyle = '#b86e00';
@@ -363,48 +362,4 @@ export function makeRacerTextures(scene: Phaser.Scene): void {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, 10, 6);
   });
-  // Tapete Kinderzimmer (128×128, kachelbar) – in 1x, wird gekachelt
-  if (!scene.textures.exists('wall-kids')) {
-    const t = scene.textures.createCanvas('wall-kids', 160, 160);
-    if (t) {
-      const ctx = t.getContext();
-      ctx.fillStyle = '#a9dcf5';
-      ctx.fillRect(0, 0, 160, 160);
-      ctx.fillStyle = '#b8e3f8';
-      for (let x = 0; x < 160; x += 40) ctx.fillRect(x, 0, 20, 160);
-      const star = (x: number, y: number, r: number, col: string) => {
-        ctx.fillStyle = col;
-        ctx.beginPath();
-        for (let i = 0; i < 10; i++) {
-          const rr = i % 2 ? r * 0.45 : r;
-          const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
-          ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-        }
-        ctx.closePath();
-        ctx.fill();
-      };
-      star(30, 36, 9, 'rgba(255,255,255,0.75)');
-      star(110, 100, 9, 'rgba(255,240,170,0.8)');
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      for (const [x, y] of [[80, 30], [140, 50], [20, 120], [70, 140]]) {
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      t.refresh();
-    }
-  }
-  if (!scene.textures.exists('skirting')) {
-    const t = scene.textures.createCanvas('skirting', 64, 48);
-    if (t) {
-      const ctx = t.getContext();
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 64, 48);
-      ctx.fillStyle = '#e4edf5';
-      ctx.fillRect(0, 0, 64, 6);
-      ctx.fillStyle = '#d0dbe6';
-      ctx.fillRect(0, 40, 64, 8);
-      t.refresh();
-    }
-  }
 }

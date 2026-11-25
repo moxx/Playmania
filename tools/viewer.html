@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="UTF-8" /><title>Playmania Model Viewer</title>
+<style>html,body{margin:0;height:100%;background:#c9e7f7;font:14px system-ui}#info{position:fixed;left:8px;top:8px;background:#fff9;padding:6px 10px;border-radius:8px}</style></head>
+<body><div id="info">lädt…</div>
+<script type="module">
+// Dev-Werkzeug: /tools/viewer.html?model=models/car-flitzer.glb&yaw=0
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+const q = new URLSearchParams(location.search);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(innerWidth, innerHeight); renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xc9e7f7);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x886644, 2.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(3, 5, 4); scene.add(sun);
+const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.01, 100);
+new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(q.get('model'), (g) => {
+  const o = g.scene; const box = new THREE.Box3().setFromObject(o); const size = box.getSize(new THREE.Vector3()); const c = box.getCenter(new THREE.Vector3());
+  o.position.sub(c); const pivot = new THREE.Group(); pivot.add(o); pivot.rotation.y = +(q.get('yaw') || 0); scene.add(pivot);
+  const r = Math.max(size.x, size.y, size.z); cam.position.set(0, r * 0.35, r * 1.9); cam.lookAt(0, 0, 0);
+  let tris = 0; o.traverse((m) => { if (m.isMesh) tris += (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3; });
+  const names = []; o.traverse((m) => names.push(m.type + ':' + m.name));
+  window.__info = { size: size.toArray().map((v) => +v.toFixed(3)), tris, names: names.slice(0, 30) };
+  document.getElementById('info').textContent = JSON.stringify(window.__info);
+  renderer.render(scene, cam); window.__ready = true;
+});
+</script></body></html>

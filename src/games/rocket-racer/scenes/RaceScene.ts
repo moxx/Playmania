@@ -4,11 +4,12 @@ import { loadSave, updateSave } from '../../../core/save';
 import { getView } from '../../../core/view';
 import { Car, type CarInput } from '../Car';
 import { carById } from '../cars';
-import { Fx } from '../Fx';
-import { LevelBuilder, type BuiltLevel } from '../LevelBuilder';
+import { buildLevelPhysics, type LevelLogic } from '../LevelPhysics';
 import { levelById } from '../levels';
 import type { LevelDef } from '../levels/types';
 import { GRAVITY_Y, STEP_MS } from '../physics';
+import type { Fx3D } from '../three/Fx3D';
+import { World3D } from '../three/World3D';
 import type { HudScene } from './HudScene';
 
 export interface RaceResult {
@@ -29,8 +30,9 @@ const CAM_ZOOM = 1.12;
 export class RaceScene extends Phaser.Scene {
   level!: LevelDef;
   car!: Car;
-  private built!: BuiltLevel;
-  private fx!: Fx;
+  private built!: LevelLogic;
+  private view!: World3D;
+  private fx!: Fx3D;
 
   /** Touch-Steuerung (vom HUD gesetzt) */
   touch: CarInput = { gas: false, brake: false, rocket: false };
@@ -51,6 +53,8 @@ export class RaceScene extends Phaser.Scene {
   private zoom = 1;
   private countdown = 0;
   private wasGrounded = true;
+  /** sichtbare Höhe in Spiel-px (für die 3D-Kamera) */
+  private viewH = 640;
 
   constructor() {
     super({
@@ -85,11 +89,11 @@ export class RaceScene extends Phaser.Scene {
   create(): void {
     const L = this.level;
     const save = loadSave();
-    this.cameras.main.setBackgroundColor('#a9dcf5');
-    this.built = new LevelBuilder(this, L).build();
-    this.fx = new Fx(this, 28);
-
     const def = carById(save.racer.car);
+    this.built = buildLevelPhysics(this, L);
+    this.view = new World3D(L, def);
+    this.fx = this.view.fx;
+
     const startY = L.floorY - def.axleY - def.wheelR - 2;
     this.car = new Car(this, def, L.startX, startY, { power: save.racer.rocketPower, tank: save.racer.rocketTank });
     this.checkpoint = { x: L.startX, y: startY };
@@ -125,6 +129,7 @@ export class RaceScene extends Phaser.Scene {
       this.scale.off('resize', this.onResize, this);
       this.game.events.off('hidden', onHidden);
       sfx.engineStop();
+      this.view.dispose();
     });
 
     sfx.engineStart();
@@ -184,10 +189,8 @@ export class RaceScene extends Phaser.Scene {
     }
     if (n === 5) this.acc = 0;
     const dt = delta / STEP_MS;
-    this.car.sync();
-    this.fx.update(dt);
     this.updateCamera(dt);
-    this.animate(_time);
+    this.view.render(dt, this.car, this.camX, this.camY, this.viewH);
     const sp = Math.min(1, Math.abs(this.car.forwardSpeed) / 14);
     sfx.engineUpdate(sp, this.input2.gas, this.car.rocketOn);
   }
@@ -233,7 +236,7 @@ export class RaceScene extends Phaser.Scene {
     if (this.state === 'finish') return;
     const parts = this.car.parts;
     const px = this.car.position.x;
-    for (const c of this.built.coins) {
+    for (const [i, c] of this.built.coins.entries()) {
       if (c.taken || Math.abs(c.x - px) > 160) continue;
       for (const p of parts) {
         const dx = p.position.x - c.x;
@@ -243,7 +246,7 @@ export class RaceScene extends Phaser.Scene {
           this.coins++;
           sfx.coin();
           this.fx.burst(c.x, c.y, 6, { tex: 'star', tint: 0xffe066, s0: 1.4, s1: 0.2, life: 22, speed: 3, add: true });
-          this.tweens.add({ targets: c.img, y: c.y - 40, alpha: 0, scale: c.img.scale * 1.6, duration: 260, onComplete: () => c.img.setVisible(false) });
+          this.view.coinTaken(i);
           break;
         }
       }
@@ -253,7 +256,7 @@ export class RaceScene extends Phaser.Scene {
   private checkBoosts(): void {
     const p = this.car.position;
     const v = this.car.velocity;
-    for (const b of this.built.boosts) {
+    for (const [i, b] of this.built.boosts.entries()) {
       if (b.cd > 0) {
         b.cd--;
         continue;
@@ -268,7 +271,7 @@ export class RaceScene extends Phaser.Scene {
         this.car.refuel(this.car.fuelMax * 0.25);
         b.cd = 60;
         sfx.boost();
-        this.cameras.main.shake(160, 0.004);
+        this.view.boostHit(i);
         this.fx.burst(b.lipX, b.lipY, 18, { tex: 'star', tint: 0xfff36b, s0: 1.6, s1: 0.2, life: 30, speed: 6, add: true });
         this.hud.toast('BOOST!', '#fff36b');
       }
@@ -278,7 +281,7 @@ export class RaceScene extends Phaser.Scene {
   private checkRings(): void {
     const p = this.car.position;
     const v = this.car.velocity;
-    for (const r of this.built.rings) {
+    for (const [i, r] of this.built.rings.entries()) {
       if (r.cd > 0) {
         r.cd--;
         continue;
@@ -291,7 +294,7 @@ export class RaceScene extends Phaser.Scene {
         r.cd = 90;
         sfx.ring();
         this.fx.burst(r.x, r.y, 24, { tex: 'star', tint: 0x9be7ff, s0: 1.5, s1: 0.2, life: 34, speed: 7, add: true });
-        this.tweens.add({ targets: r.img, scale: r.img.scale * 1.35, duration: 140, yoyo: true });
+        this.view.ringHit(i);
         this.hud.toast('SUPER!', '#9be7ff');
       }
     }
@@ -325,7 +328,7 @@ export class RaceScene extends Phaser.Scene {
   private rocketFx(): void {
     const car = this.car;
     if (!car.rocketOn) return;
-    const n = car.nozzle();
+    const n = this.view.rocketNozzle();
     const a = car.angle + Math.PI;
     for (let i = 0; i < 2; i++) {
       const spread = (Math.random() - 0.5) * 0.5;
@@ -384,18 +387,6 @@ export class RaceScene extends Phaser.Scene {
     this.time.delayedCall(1300, () => this.hud.showResult(result));
   }
 
-  private animate(time: number): void {
-    const t = time * 0.004;
-    const k = this.built.coins[0]?.img.scaleY ?? 1;
-    for (const c of this.built.coins) {
-      if (!c.taken) c.img.scaleX = k * (0.25 + 0.75 * Math.abs(Math.cos(t + c.x * 0.01)));
-    }
-    for (const r of this.built.rings) {
-      r.glow.setAlpha(0.25 + 0.15 * Math.sin(time * 0.006));
-      r.img.rotation = Math.sin(time * 0.003) * 0.1;
-    }
-  }
-
   private updateCamera(dt: number, snap = false): void {
     const cam = this.cameras.main;
     const L = this.level;
@@ -416,22 +407,6 @@ export class RaceScene extends Phaser.Scene {
     this.camY = lerp(this.camY, ty, 0.12);
     this.camX = Phaser.Math.Clamp(this.camX, viewW / 2 - 260, L.endX + 500 - viewW / 2);
     this.camY = Phaser.Math.Clamp(this.camY, -1400 + viewH / 2, L.floorY + 110 - viewH / 2);
-    cam.centerOn(this.camX, this.camY);
-
-    // Hintergrund mitführen (Parallax)
-    const left = this.camX - viewW / 2;
-    const top = this.camY - viewH / 2;
-    const b = this.built;
-    b.wall.setPosition(left - 2, top - 2);
-    if (b.wall.width < viewW + 4 || b.wall.height < viewH + 4) b.wall.setSize(viewW + 200, viewH + 200);
-    b.wall.tilePositionX = left * 0.6;
-    b.wall.tilePositionY = top;
-    b.skirting.setX(left - 2);
-    if (b.skirting.width < viewW + 4) b.skirting.setSize(viewW + 200, 48);
-    b.skirting.tilePositionX = left * 0.6;
-    b.decor.x = left * 0.4;
-    // Culling der Level-Grafik
-    const margin = 700;
-    for (const c of b.chunks) c.g.setVisible(c.x1 + margin > left && c.x0 - margin < left + viewW);
+    this.viewH = viewH;
   }
 }

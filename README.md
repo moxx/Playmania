@@ -3,8 +3,11 @@
 Eine Sammlung kleiner Spiele für iPhone & Android. Erstes Spiel: **Rocket Racer** –
 Matchbox-Autos mit Raketen-Antrieb rasen durch Kinderzimmer, Garagen und Wohnzimmer.
 
-**Tech:** TypeScript · [Phaser 4](https://phaser.io) (Matter.js-Physik) · Vite · [Capacitor 8](https://capacitorjs.com) für native Apps.
-Alle Grafiken und Sounds werden im Code erzeugt (Canvas / WebAudio) – keine Asset-Dateien nötig.
+**Tech:** TypeScript · [Three.js](https://threejs.org) (3D-Darstellung) · [Phaser 4](https://phaser.io) (Menüs, HUD, Matter.js-Physik) · Vite · [Capacitor 8](https://capacitorjs.com) für native Apps.
+
+**2,5D:** Die Physik läuft in 2D (Seitenansicht, gut steuerbar für Kinder), gerendert wird ein echter
+3D-Raum mit Licht, Schatten und Perspektive. Die 3D-Modelle (Autos, Rakete, Möbel) sind mit Higgsfield
+generiert – Details in [docs/ASSETS.md](docs/ASSETS.md). Sounds kommen aus einem WebAudio-Synth.
 
 ## Schnellstart
 
@@ -14,6 +17,8 @@ npm run dev          # http://localhost:5173 – auch im WLAN erreichbar (--host
 npm run build        # Production-Build nach dist/
 npm run typecheck
 ```
+
+Modell-Viewer (nur Dev): `/tools/viewer.html?model=/models/car-flitzer.glb&yaw=0`
 
 Debug-Parameter: `?debug` (stellt `window.__race` / `window.__game` bereit), `?scene=race` / `?scene=garage` springt direkt hinein.
 
@@ -47,16 +52,18 @@ In der Luft stabilisiert sich das Auto selbst, damit Kinder nicht ständig auf d
 
 ```
 src/
-  main.ts                   Phaser-Setup (Retina, Resize, Audio-Unlock)
+  main.ts                   Phaser-Setup (Retina, Resize, Audio-Unlock), transparenter Canvas über Three.js
   core/                     Spielstand (localStorage), WebAudio-Synth, View/Safe-Area
   ui/                       Buttons, Theme, Widgets
   scenes/                   Boot + Playmania-Hub (Spieleauswahl)
   games/rocket-racer/
     cars.ts                 Autos & Raketen-Upgrades (Preise, Werte)
     Car.ts                  Fahrphysik (Chassis + gefederte Räder, Rakete, Luftsteuerung)
-    LevelBuilder.ts         Baut Physik + Grafik aus Level-Daten
+    LevelPhysics.ts         Baut die Matter-Körper + Spiel-Logik aus Level-Daten
+    three/                  3D: World3D (Rennen), Car3D, Showroom3D (Garage), Partikel, Texturen, Modell-Loader
     levels/                 Level als Daten (kidsroom.ts = Level 1)
     scenes/                 Garage, Rennen, HUD
+public/models/              GLB-Modelle (optimiert)
 ios/ android/               Capacitor-Projekte
 ```
 

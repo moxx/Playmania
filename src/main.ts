@@ -31,7 +31,8 @@ async function boot(): Promise<void> {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    backgroundColor: '#1b1035',
+    // transparent: Darunter liegt der Three.js-Canvas (3D-Welt im Rennen / Garage)
+    transparent: true,
     width: w,
     height: h,
     scale: { mode: Phaser.Scale.NONE, zoom: 1 / DPR },

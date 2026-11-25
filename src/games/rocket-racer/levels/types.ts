@@ -32,7 +32,7 @@ export interface Ring {
   y: number;
 }
 
-export type DecorKind = 'window' | 'bed' | 'shelf' | 'poster' | 'lamp' | 'clock' | 'door' | 'chest' | 'dino';
+export type DecorKind = 'window' | 'bed' | 'shelf' | 'poster' | 'lamp' | 'clock' | 'door' | 'chest' | 'dino' | 'teddy' | 'desk';
 
 export interface Decor {
   kind: DecorKind;

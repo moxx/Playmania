@@ -5,13 +5,16 @@ import { restartOnResize, safeInsets, setupUiCamera } from '../../../core/view';
 import { Button, iconButton } from '../../../ui/Button';
 import { C, txt } from '../../../ui/theme';
 import { coinPill } from '../../../ui/widgets';
-import { CARS, ROCKET_COSTS, ROCKET_MAX_LEVEL, type CarDef } from '../cars';
+import { CARS, ROCKET_COSTS, ROCKET_MAX_LEVEL } from '../cars';
 import { LEVELS, UPCOMING } from '../levels';
-import { CAR_TEX, TEX_K } from '../textures';
+import { Showroom3D } from '../three/Showroom3D';
+import { TEX_K } from '../textures';
 
 /** Garage: Auto wählen/kaufen, Rakete verstärken, Level starten. */
 export class GarageScene extends Phaser.Scene {
   private idx = 0;
+  private showroom: Showroom3D | null = null;
+  private stage = { fx: 0.3, fy: 0.45 };
 
   constructor() {
     super({ key: 'garage' });
@@ -44,16 +47,13 @@ export class GarageScene extends Phaser.Scene {
     txt(this, cx, 122, car.name, 38, { stroke: '#24123f', strokeThickness: 8 });
     txt(this, cx, 160, car.desc, 20, { weight: '500', color: '#e6dcff' });
 
-    const pod = this.add.graphics();
-    pod.fillStyle(0x000000, 0.25);
-    pod.fillEllipse(cx, 352, 380, 60);
-    pod.fillStyle(C.panelLight, 1);
-    pod.fillEllipse(cx, 342, 360, 52);
-    pod.fillStyle(0x7a5ad0, 1);
-    pod.fillEllipse(cx, 336, 340, 40);
-    const show = this.carModel(car, cx, 336 - (car.axleY + car.wheelR) * 2.1, 2.1);
-    this.tweens.add({ targets: show, y: show.y - 8, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    if (!owned) show.setAlpha(0.55);
+    this.showroom = new Showroom3D();
+    this.showroom.setCar(car, owned);
+    this.stage = { fx: cx / W, fy: 268 / H };
+    this.events.once('shutdown', () => {
+      this.showroom?.dispose();
+      this.showroom = null;
+    });
 
     const prev = iconButton(this, cx - leftW * 0.42, 280, 72, '◀', () => this.flip(-1), C.panelLight);
     const next = iconButton(this, cx + leftW * 0.42, 280, 72, '▶', () => this.flip(1), C.panelLight);
@@ -150,26 +150,13 @@ export class GarageScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown-ENTER', () => this.scene.start('race', { levelId: lvl.id }));
   }
 
+  update(_t: number, delta: number): void {
+    this.showroom?.render(delta / (1000 / 60), this.stage.fx, this.stage.fy);
+  }
+
   private flip(d: number): void {
     this.idx = (this.idx + d + CARS.length) % CARS.length;
     this.scene.restart();
-  }
-
-  private carModel(car: CarDef, x: number, y: number, scale: number): Phaser.GameObjects.Container {
-    const k = scale / TEX_K;
-    const c = this.add.container(x, y);
-    const rocketLocal =
-      car.style === 'pickup'
-        ? { x: -car.bodyW / 2 + 34, y: -car.bodyH / 2 - 10 }
-        : { x: car.cabBack + (car.cabFront - car.cabBack) * 0.35, y: -car.bodyH / 2 - car.cabH - 8 };
-    c.add(this.add.image(rocketLocal.x * scale, rocketLocal.y * scale, 'rocket').setScale(k));
-    c.add(this.add.image(0, 0, `car-${car.id}`).setOrigin(0.5, (CAR_TEX.h / 2 + 10) / CAR_TEX.h).setScale(k));
-    for (const ax of car.axles) {
-      const w = this.add.image(ax * scale, car.axleY * scale, `wheel-${car.id}`).setScale(k);
-      c.add(w);
-      this.tweens.add({ targets: w, rotation: Math.PI * 2, duration: 2400, repeat: -1 });
-    }
-    return c;
   }
 
   private panelBox(x: number, y: number, w: number, h: number): void {
@@ -216,20 +203,10 @@ export class GarageScene extends Phaser.Scene {
     b.setEnabled(save.coins >= cost);
   }
 
-  private drawBackground(W: number, H: number): void {
+  private drawBackground(W: number, _H: number): void {
+    // Die Garage selbst ist 3D (Showroom3D) – hier nur die Kopfleiste
     const g = this.add.graphics();
-    g.fillGradientStyle(0x2f3a5c, 0x2f3a5c, 0x1d2238, 0x1d2238, 1);
-    g.fillRect(-100, -100, W + 200, H + 200);
-    // Lochwand
-    g.fillStyle(0xffffff, 0.05);
-    for (let x = 20; x < W; x += 36) for (let y = 110; y < H - 60; y += 36) g.fillCircle(x, y, 3);
-    // Boden
-    g.fillStyle(0x3a3f4f, 1);
-    g.fillRect(-100, H - 70, W + 200, 200);
-    g.fillStyle(0xffc928, 1);
-    for (let x = -40; x < W + 40; x += 80) g.fillTriangle(x, H - 70, x + 40, H - 70, x + 20, H - 60);
-    // Kopfleiste
-    g.fillStyle(0x000000, 0.25);
+    g.fillStyle(0x000000, 0.3);
     g.fillRect(-100, -100, W + 200, 200);
   }
 }

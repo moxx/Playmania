@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { carHullPoints, rocketTank, rocketThrust, type CarDef } from './cars';
-import { CAR_TEX, TEX_K } from './textures';
 
 type Body = MatterJS.BodyType;
 
@@ -27,11 +26,6 @@ export class Car {
   readonly wheels: Body[];
   readonly parts: Body[];
   private readonly c: { x: number; y: number };
-  private readonly bodyImg: Phaser.GameObjects.Image;
-  private readonly wheelImgs: Phaser.GameObjects.Image[];
-  private readonly rocketImg: Phaser.GameObjects.Image;
-  private readonly rocketLocal: { x: number; y: number };
-  private readonly scaleK = 1 / TEX_K;
 
   /** pro Schritt durch Kollisions-Events gesetzt */
   wheelContact = [false, false];
@@ -82,24 +76,9 @@ export class Car {
     });
     this.parts = [this.chassis, ...this.wheels];
 
-    // Grafik
-    const k = this.scaleK;
-    this.rocketLocal =
-      def.style === 'pickup'
-        ? { x: -def.bodyW / 2 + 34, y: -def.bodyH / 2 - 10 }
-        : { x: def.cabBack + (def.cabFront - def.cabBack) * 0.35, y: -def.bodyH / 2 - def.cabH - 8 };
-    this.rocketImg = scene.add.image(0, 0, 'rocket').setScale(k).setDepth(29);
-    this.bodyImg = scene.add
-      .image(0, 0, `car-${def.id}`)
-      .setOrigin(0.5, (CAR_TEX.h / 2 + 10) / CAR_TEX.h)
-      .setScale(k)
-      .setDepth(30);
-    this.wheelImgs = this.wheels.map(() => scene.add.image(0, 0, `wheel-${def.id}`).setScale(k).setDepth(31));
-
     this.fuelMax = rocketTank(rocket.tank);
     this.fuel = this.fuelMax;
     this.thrust = rocketThrust(rocket.power);
-    this.sync();
   }
 
   /** lokaler Punkt (relativ zum Auto-Ursprung) → Welt */
@@ -241,24 +220,5 @@ export class Car {
       M.body.setAngularVelocity(p, 0);
     }
     this.fuel = Math.max(this.fuel, this.fuelMax * 0.5);
-    this.sync();
-  }
-
-  nozzle(): { x: number; y: number } {
-    return this.toWorld(this.rocketLocal.x - 31, this.rocketLocal.y);
-  }
-
-  sync(): void {
-    const o = this.toWorld(0, 0);
-    this.bodyImg.setPosition(o.x, o.y).setRotation(this.chassis.angle);
-    const r = this.toWorld(this.rocketLocal.x, this.rocketLocal.y);
-    this.rocketImg.setPosition(r.x, r.y).setRotation(this.chassis.angle);
-    this.wheels.forEach((w, i) => this.wheelImgs[i].setPosition(w.position.x, w.position.y).setRotation(w.angle));
-  }
-
-  destroy(): void {
-    this.bodyImg.destroy();
-    this.rocketImg.destroy();
-    this.wheelImgs.forEach((w) => w.destroy());
   }
 }
