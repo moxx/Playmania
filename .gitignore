@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.vite/
+# Capacitor native build outputs
+ios/App/App/public/
+ios/App/build/
+ios/App/Pods/
+ios/DerivedData/
+android/app/build/
+android/build/
+android/.gradle/
+android/app/src/main/assets/public/
+android/local.properties

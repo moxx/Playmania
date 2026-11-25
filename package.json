@@ -1,0 +1,29 @@
+{
+  "name": "playmania",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Playmania – eine Sammlung kleiner Spiele. Erstes Spiel: Rocket Racer.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/make-icons.cjs",
+    "cap:sync": "npm run build && cap sync",
+    "ios": "npm run build && cap sync ios && cap open ios",
+    "android": "npm run build && cap sync android && cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.6.3",
+    "@fontsource/fredoka": "^5.3.0",
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.6.3",
+    "@capacitor/cli": "^8.6.3",
+    "@capacitor/ios": "^8.6.3",
+    "typescript": "5.9",
+    "vite": "^8.3.8"
+  }
+}
