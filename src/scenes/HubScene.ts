@@ -112,7 +112,10 @@ export class HubScene extends Phaser.Scene {
       const cx = startX + i * (cw + gap);
       const cy = 440;
       const big = i === 0;
-      const c = this.add.container(cx, cy);
+      // Äußerer Container = Klickfläche (bleibt unbewegt), innerer = Grafik (darf wackeln)
+      const hit = this.add.container(cx, cy);
+      const c = this.add.container(0, 0);
+      hit.add(c);
       const g = this.add.graphics();
       const dark = Phaser.Display.Color.IntegerToColor(card.color).darken(30).color;
       g.fillStyle(0x000000, 0.35);
@@ -130,19 +133,29 @@ export class HubScene extends Phaser.Scene {
       c.add(txt(this, 0, 92, card.title, big ? 38 : 28, { stroke: '#24123f', strokeThickness: big ? 8 : 6, color: big ? '#ffffff' : '#ffffffaa' }));
       c.add(txt(this, 0, 134, card.subtitle, 19, { weight: '600', color: big ? '#3a1d00' : '#ffffff77', wrap: cw - 30 }));
       if (card.scene) {
-        c.setSize(cw, ch);
-        c.setInteractive(new Phaser.Geom.Rectangle(-cw / 2, -ch / 2, cw, ch), Phaser.Geom.Rectangle.Contains);
-        c.on('pointerdown', () => c.setScale(0.96));
-        c.on('pointerout', () => c.setScale(1));
-        c.on('pointerup', () => {
+        hit.setSize(cw, ch);
+        hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, cw, ch), Phaser.Geom.Rectangle.Contains);
+        if (hit.input) hit.input.cursor = 'pointer';
+        let pressed = false;
+        hit.on('pointerdown', () => {
+          pressed = true;
+          c.setScale(0.96);
+        });
+        hit.on('pointerout', () => {
+          pressed = false;
           c.setScale(1);
+        });
+        hit.on('pointerup', () => {
+          c.setScale(1);
+          if (!pressed) return;
+          pressed = false;
           sfx.unlock();
           sfx.click();
           this.scene.start(card.scene!);
         });
         this.tweens.add({ targets: c, angle: 1.2, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       } else {
-        c.setAlpha(0.8);
+        hit.setAlpha(0.8);
       }
     });
 

@@ -135,7 +135,7 @@ export class GarageScene extends Phaser.Scene {
       weight: '600',
     });
     const play = new Button(this, px + pw - 100, 510, 150, 64, 'LOS ▶', () => this.scene.start('race', { levelId: lvl.id }), { color: C.green, textColor: '#ffffff' });
-    this.tweens.add({ targets: play, scale: 1.06, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: play.face, scale: 1.06, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     const sw = (pw - 32 - 12) / 2;
     UPCOMING.forEach((u, i) => {
